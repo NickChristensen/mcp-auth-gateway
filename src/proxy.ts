@@ -103,6 +103,14 @@ export async function handleMcpProxyRequest(
   // Copy request headers
   const proxyHeaders = new Headers(request.headers);
 
+  // Debug logging (commented out - uncomment for troubleshooting)
+  // console.log("Incoming headers:", {
+  //   method: request.method,
+  //   accept: request.headers.get("accept"),
+  //   contentType: request.headers.get("content-type"),
+  //   mcpSessionId: request.headers.get("mcp-session-id"),
+  // });
+
   // Remove headers that should not be forwarded
   proxyHeaders.delete("host");
   proxyHeaders.delete("authorization"); // Remove Claude's auth, we'll use service tokens
@@ -110,6 +118,12 @@ export async function handleMcpProxyRequest(
   // Add Cloudflare Access service token headers for origin authentication
   proxyHeaders.set("CF-Access-Client-Id", env.CF_ACCESS_CLIENT_ID);
   proxyHeaders.set("CF-Access-Client-Secret", env.CF_ACCESS_CLIENT_SECRET);
+
+  // Debug logging (commented out - uncomment for troubleshooting)
+  // console.log("Forwarding to origin:", {
+  //   url: originUrl.toString(),
+  //   mcpSessionId: proxyHeaders.get("mcp-session-id"),
+  // });
 
   try {
     // Proxy the request to origin with timeout
@@ -125,6 +139,13 @@ export async function handleMcpProxyRequest(
     });
 
     clearTimeout(timeoutId);
+
+    // Debug logging (commented out - uncomment for troubleshooting)
+    // console.log("Origin response:", {
+    //   status: proxyResponse.status,
+    //   contentType: proxyResponse.headers.get("content-type"),
+    //   mcpSessionId: proxyResponse.headers.get("mcp-session-id"),
+    // });
 
     // Stream response back to client
     const responseHeaders = new Headers(proxyResponse.headers);
