@@ -1,0 +1,28 @@
+# MCP Auth Gateway - Things Deployment
+name = "things-mcp-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Route configuration - custom domain for all paths
+[[routes]]
+pattern = "things-mcp.nickchristensen.house"
+custom_domain = true
+
+[vars]
+# Origin URL that Worker will proxy to
+ORIGIN_MCP_URL = "https://things-origin.nickchristensen.house/mcp"
+
+# Required secrets (set via: wrangler secret put <NAME> --config wrangler.things.toml)
+# Do NOT put actual secret values here - use CLI only
+#
+# OAuth configuration from Cloudflare Access SaaS app:
+# - ACCESS_CLIENT_ID
+# - ACCESS_CLIENT_SECRET
+# - ACCESS_AUTHORIZATION_URL
+# - ACCESS_TOKEN_URL
+# - ACCESS_JWKS_URL
+# - COOKIE_ENCRYPTION_KEY (random 32+ character string)
+#
+# Origin service token from Cloudflare Access self-hosted app:
+# - CF_ACCESS_CLIENT_ID
+# - CF_ACCESS_CLIENT_SECRET
