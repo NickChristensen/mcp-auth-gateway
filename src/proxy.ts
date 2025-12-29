@@ -1,17 +1,12 @@
 import type { Env } from "./index";
-import { getSession } from "./session";
+import { validateAccessToken, type CloudflareTokens } from "./token-store";
 
 const PROXY_TIMEOUT = 60000; // 60 seconds
 
-interface TokenResponse {
-  access_token: string;
-  expires_in?: number;
-}
-
-async function refreshAccessToken(
+async function refreshCloudflareToken(
   refreshToken: string,
   env: Env
-): Promise<{ accessToken: string; expiresAt: number } | null> {
+): Promise<CloudflareTokens | null> {
   try {
     const tokenResponse = await fetch(env.ACCESS_TOKEN_URL, {
       method: "POST",
@@ -30,15 +25,20 @@ async function refreshAccessToken(
       return null;
     }
 
-    const tokens: TokenResponse = await tokenResponse.json();
+    const tokens: {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    } = await tokenResponse.json();
     return {
       accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
       expiresAt: tokens.expires_in
         ? Date.now() + tokens.expires_in * 1000
         : Date.now() + 90 * 24 * 60 * 60 * 1000,
     };
   } catch (error) {
-    console.error("Token refresh failed:", error);
+    console.error("Cloudflare token refresh failed:", error);
     return null;
   }
 }
@@ -47,63 +47,67 @@ export async function handleMcpProxyRequest(
   request: Request,
   env: Env
 ): Promise<Response> {
-  // Get session
-  let session = await getSession(request, env);
-
-  if (!session) {
-    // No session - redirect to OAuth
-    return new Response(null, {
-      status: 302,
+  // Extract Bearer token from Authorization header
+  const authHeader = request.headers.get("Authorization");
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return new Response("Unauthorized", {
+      status: 401,
       headers: {
-        Location: "/authorize",
+        "WWW-Authenticate": 'Bearer realm="MCP Gateway"',
       },
     });
   }
 
-  // Check if token expired and attempt refresh
-  if (session.expiresAt && Date.now() > session.expiresAt - 60000) {
+  const accessToken = authHeader.substring(7); // Remove "Bearer "
+
+  // Validate and decode our access token to get Cloudflare tokens
+  let cloudflareTokens = await validateAccessToken(accessToken, env);
+  if (!cloudflareTokens) {
+    return new Response("Unauthorized", {
+      status: 401,
+      headers: {
+        "WWW-Authenticate": 'Bearer error="invalid_token"',
+      },
+    });
+  }
+
+  // Check if Cloudflare token is about to expire and refresh if needed
+  if (
+    cloudflareTokens.expiresAt &&
+    Date.now() > cloudflareTokens.expiresAt - 60000
+  ) {
     // 1 min buffer
-    if (session.refreshToken) {
-      const refreshed = await refreshAccessToken(session.refreshToken, env);
+    if (cloudflareTokens.refreshToken) {
+      const refreshed = await refreshCloudflareToken(
+        cloudflareTokens.refreshToken,
+        env
+      );
       if (refreshed) {
-        session = {
-          ...session,
-          accessToken: refreshed.accessToken,
-          expiresAt: refreshed.expiresAt,
-        };
-        // TODO: Update session cookie in response if token was refreshed
+        cloudflareTokens = refreshed;
+        // Note: Client will continue using same access token, but we use refreshed Cloudflare tokens
       } else {
         // Refresh failed - require re-authentication
-        return new Response(null, {
+        return new Response("Unauthorized", {
           status: 401,
           headers: {
             "WWW-Authenticate": 'Bearer error="invalid_token"',
-            Location: "/authorize",
           },
         });
       }
-    } else {
-      // No refresh token and expired - require re-authentication
-      return new Response(null, {
-        status: 401,
-        headers: {
-          "WWW-Authenticate": 'Bearer error="invalid_token"',
-          Location: "/authorize",
-        },
-      });
     }
   }
 
-  // Build proxy request
+  // Build proxy request to origin
   const originUrl = new URL(env.ORIGIN_MCP_URL);
 
   // Copy request headers
   const proxyHeaders = new Headers(request.headers);
 
-  // Remove host header to avoid conflicts
+  // Remove headers that should not be forwarded
   proxyHeaders.delete("host");
+  proxyHeaders.delete("authorization"); // Remove Claude's auth, we'll use service tokens
 
-  // Add Cloudflare Access service token headers
+  // Add Cloudflare Access service token headers for origin authentication
   proxyHeaders.set("CF-Access-Client-Id", env.CF_ACCESS_CLIENT_ID);
   proxyHeaders.set("CF-Access-Client-Secret", env.CF_ACCESS_CLIENT_SECRET);
 
@@ -117,17 +121,13 @@ export async function handleMcpProxyRequest(
       headers: proxyHeaders,
       body: request.body,
       signal: controller.signal,
-      // Don't follow redirects
-      redirect: "manual",
+      redirect: "manual", // Don't follow redirects
     });
 
     clearTimeout(timeoutId);
 
     // Stream response back to client
     const responseHeaders = new Headers(proxyResponse.headers);
-
-    // Add CORS headers if needed (though spec says no CORS)
-    // responseHeaders.set('Access-Control-Allow-Origin', '*');
 
     return new Response(proxyResponse.body, {
       status: proxyResponse.status,
@@ -136,10 +136,36 @@ export async function handleMcpProxyRequest(
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      return new Response("Gateway timeout", { status: 504 });
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: {
+            code: -32000,
+            message: "Gateway timeout",
+          },
+          id: null,
+        }),
+        {
+          status: 504,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
     }
 
     console.error("Proxy request failed:", error);
-    return new Response("Bad Gateway", { status: 502 });
+    return new Response(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Bad Gateway",
+        },
+        id: null,
+      }),
+      {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
   }
 }

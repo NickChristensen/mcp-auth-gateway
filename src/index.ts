@@ -62,6 +62,10 @@ export default {
       case "/.well-known/oauth-authorization-server":
         return handleOAuthDiscovery(request, env);
 
+      case "/.well-known/oauth-protected-resource":
+      case "/.well-known/oauth-protected-resource/mcp":
+        return handleProtectedResourceMetadata(request, env);
+
       default:
         return new Response("Not Found", { status: 404 });
     }
@@ -80,8 +84,36 @@ function handleOAuthDiscovery(request: Request, _env: Env): Response {
         token_endpoint: `${baseUrl}/token`,
         registration_endpoint: `${baseUrl}/register`,
         response_types_supported: ["code"],
-        grant_types_supported: ["authorization_code", "refresh_token"],
+        grant_types_supported: ["authorization_code"],
         code_challenge_methods_supported: ["S256"],
+        token_endpoint_auth_methods_supported: ["none"],
+      },
+      null,
+      2
+    ),
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+      },
+    }
+  );
+}
+
+function handleProtectedResourceMetadata(
+  request: Request,
+  _env: Env
+): Response {
+  const url = new URL(request.url);
+  const baseUrl = `${url.protocol}//${url.host}`;
+
+  return new Response(
+    JSON.stringify(
+      {
+        resource: `${baseUrl}/mcp`,
+        authorization_servers: [baseUrl],
+        bearer_methods_supported: ["header"],
+        resource_documentation: `${baseUrl}/mcp`,
       },
       null,
       2
