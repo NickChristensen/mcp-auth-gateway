@@ -108,13 +108,15 @@ export async function handleCallbackRequest(
   // Clear state cookie
   const clearStateCookie = "oauth_state=; Max-Age=0; Path=/";
 
-  // Redirect to root or continue to MCP
+  // Create headers with multiple Set-Cookie values
+  const headers = new Headers();
+  headers.append("Location", "/mcp");
+  headers.append("Set-Cookie", sessionCookie);
+  headers.append("Set-Cookie", clearStateCookie);
+
   return new Response(null, {
     status: 302,
-    headers: {
-      Location: "/mcp",
-      "Set-Cookie": [sessionCookie, clearStateCookie].join(", "),
-    },
+    headers,
   });
 }
 
