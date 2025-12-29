@@ -27,3 +27,7 @@ Thumbs.db
 *.key
 *.pem
 secrets.txt
+SECRETS_TEMPLATE.md
+SECRETS_*.md
+*secrets*
+*SECRETS*
