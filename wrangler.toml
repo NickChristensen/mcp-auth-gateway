@@ -1,0 +1,37 @@
+# MCP Auth Gateway - Cloudflare Worker Configuration
+# This file is a template. Copy and modify for each deployment (paperless, things, etc.)
+
+name = "mcp-gateway"
+main = "src/index.ts"
+compatibility_date = "2024-12-01"
+
+# Workers Paid plan required for longer CPU time and OAuth flows
+# usage_model = "bundled"  # Uncomment if on Workers Paid plan
+
+# Route configuration - update for each backend
+# Example: paperless-mcp.nickchristensen.house/*
+# routes = [
+#   { pattern = "paperless-mcp.nickchristensen.house/*", custom_domain = true }
+# ]
+
+[vars]
+# Non-secret configuration
+# Update ORIGIN_MCP_URL for each deployment:
+# - Paperless: https://paperless-origin.nickchristensen.house/mcp
+# - Things: https://things-origin.nickchristensen.house/mcp
+ORIGIN_MCP_URL = "https://example-origin.nickchristensen.house/mcp"
+
+# Required secrets (set via: wrangler secret put <NAME>)
+# Do NOT put actual secret values here - use CLI only
+#
+# OAuth configuration from Cloudflare Access SaaS app:
+# - ACCESS_CLIENT_ID
+# - ACCESS_CLIENT_SECRET
+# - ACCESS_AUTHORIZATION_URL
+# - ACCESS_TOKEN_URL
+# - ACCESS_JWKS_URL
+# - COOKIE_ENCRYPTION_KEY (random 32+ character string)
+#
+# Origin service token from Cloudflare Access self-hosted app:
+# - CF_ACCESS_CLIENT_ID
+# - CF_ACCESS_CLIENT_SECRET

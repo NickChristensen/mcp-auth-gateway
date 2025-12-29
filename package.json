@@ -1,0 +1,30 @@
+{
+  "name": "mcp-auth-gateway",
+  "version": "1.0.0",
+  "description": "OAuth-secured MCP gateway for Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail",
+    "rollback": "wrangler rollback",
+    "deploy:paperless": "wrangler deploy --name paperless-mcp-gateway",
+    "deploy:things": "wrangler deploy --name things-mcp-gateway"
+  },
+  "keywords": [
+    "mcp",
+    "oauth",
+    "cloudflare",
+    "workers"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20251229.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.54.0"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.2.2"
+  }
+}
