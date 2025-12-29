@@ -4,16 +4,11 @@
   "description": "OAuth-secured MCP gateway for Cloudflare Workers",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "wrangler dev --config wrangler.paperless.toml",
-    "deploy": "wrangler deploy --config wrangler.paperless.toml",
-    "tail": "wrangler tail --config wrangler.paperless.toml",
-    "rollback": "wrangler rollback --config wrangler.paperless.toml",
-    "deploy:paperless": "wrangler deploy --config wrangler.paperless.toml",
-    "deploy:things": "wrangler deploy --config wrangler.things.toml",
-    "tail:paperless": "wrangler tail --config wrangler.paperless.toml",
-    "tail:things": "wrangler tail --config wrangler.things.toml",
-    "secrets:paperless": "echo 'Use: wrangler secret put <NAME> --config wrangler.paperless.toml'",
-    "secrets:things": "echo 'Use: wrangler secret put <NAME> --config wrangler.things.toml'"
+    "service": "./scripts/run-service.sh",
+    "dev": "npm run service paperless dev",
+    "deploy": "npm run service paperless deploy",
+    "tail": "npm run service paperless tail",
+    "rollback": "npm run service paperless rollback"
   },
   "keywords": [
     "mcp",
