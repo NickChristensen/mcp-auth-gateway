@@ -35,7 +35,7 @@ async function refreshCloudflareToken(
       refreshToken: tokens.refresh_token,
       expiresAt: tokens.expires_in
         ? Date.now() + tokens.expires_in * 1000
-        : Date.now() + 90 * 24 * 60 * 60 * 1000,
+        : Date.now() + 24 * 60 * 60 * 1000, // Default to 24 hours
     };
   } catch (error) {
     console.error("Cloudflare token refresh failed:", error);
@@ -74,9 +74,8 @@ export async function handleMcpProxyRequest(
   // Check if Cloudflare token is about to expire and refresh if needed
   if (
     cloudflareTokens.expiresAt &&
-    Date.now() > cloudflareTokens.expiresAt - 60000
+    Date.now() > cloudflareTokens.expiresAt - 3600000
   ) {
-    // 1 min buffer
     if (cloudflareTokens.refreshToken) {
       const refreshed = await refreshCloudflareToken(
         cloudflareTokens.refreshToken,
@@ -149,6 +148,15 @@ export async function handleMcpProxyRequest(
 
     // Stream response back to client
     const responseHeaders = new Headers(proxyResponse.headers);
+
+    // Add proactive refresh hint if token is expiring soon
+    if (cloudflareTokens.expiresAt) {
+      const timeUntilExpiry = cloudflareTokens.expiresAt - Date.now();
+      responseHeaders.set(
+        "X-Token-Expires-In",
+        Math.floor(timeUntilExpiry / 1000).toString()
+      );
+    }
 
     return new Response(proxyResponse.body, {
       status: proxyResponse.status,
