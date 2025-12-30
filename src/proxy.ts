@@ -71,6 +71,9 @@ export async function handleMcpProxyRequest(
     });
   }
 
+  // Save original access token expiry (embedded in the access token)
+  const accessTokenExpiresAt = cloudflareTokens.expiresAt;
+
   // Check if Cloudflare token is about to expire and refresh if needed
   if (
     cloudflareTokens.expiresAt &&
@@ -149,9 +152,9 @@ export async function handleMcpProxyRequest(
     // Stream response back to client
     const responseHeaders = new Headers(proxyResponse.headers);
 
-    // Add proactive refresh hint if token is expiring soon
-    if (cloudflareTokens.expiresAt) {
-      const timeUntilExpiry = cloudflareTokens.expiresAt - Date.now();
+    // Add proactive refresh hint
+    if (accessTokenExpiresAt) {
+      const timeUntilExpiry = accessTokenExpiresAt - Date.now();
       responseHeaders.set(
         "X-Token-Expires-In",
         Math.floor(timeUntilExpiry / 1000).toString()
