@@ -133,7 +133,7 @@ export async function handleCallbackRequest(
       refreshToken: tokens.refresh_token,
       expiresAt: tokens.expires_in
         ? Date.now() + tokens.expires_in * 1000
-        : Date.now() + 90 * 24 * 60 * 60 * 1000, // 90 days default
+        : Date.now() + 24 * 60 * 60 * 1000, // Default to 24 hours
     },
     codeChallenge: flowState.claudeCodeChallenge,
   };
