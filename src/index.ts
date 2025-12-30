@@ -5,7 +5,7 @@ import {
   handleTokenRequest,
   handleRegisterRequest,
 } from "./oauth";
-import { paperlessIcons, thingsIcons, type Icons } from "./icons";
+import { icons, type Icons } from "./icons";
 
 export interface Env {
   ACCESS_CLIENT_ID: string;
@@ -20,14 +20,13 @@ export interface Env {
 }
 
 // Detect which service is running based on ORIGIN_MCP_URL
-function getIcons(env: Env): Icons {
-  if (env.ORIGIN_MCP_URL.includes("paperless")) {
-    return paperlessIcons;
-  } else if (env.ORIGIN_MCP_URL.includes("things")) {
-    return thingsIcons;
+function getIcons(env: Env): Icons | null {
+  for (const serviceName in icons) {
+    if (env.ORIGIN_MCP_URL.includes(serviceName)) {
+      return icons[serviceName];
+    }
   }
-  // Fallback to paperless if we can't detect
-  return paperlessIcons;
+  return null;
 }
 
 export default {
@@ -58,6 +57,9 @@ export default {
 
       case "/favicon.ico": {
         const icons = getIcons(env);
+        if (!icons) {
+          return new Response("Not Found", { status: 404 });
+        }
         const iconData = Uint8Array.from(atob(icons.favicon), (c) =>
           c.charCodeAt(0)
         );
@@ -72,6 +74,9 @@ export default {
       case "/apple-touch-icon.png":
       case "/apple-touch-icon-precomposed.png": {
         const icons = getIcons(env);
+        if (!icons) {
+          return new Response("Not Found", { status: 404 });
+        }
         const iconData = Uint8Array.from(atob(icons.appleTouchIcon), (c) =>
           c.charCodeAt(0)
         );
