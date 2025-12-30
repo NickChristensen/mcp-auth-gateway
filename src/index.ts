@@ -5,6 +5,7 @@ import {
   handleTokenRequest,
   handleRegisterRequest,
 } from "./oauth";
+import { paperlessIcons, thingsIcons, type Icons } from "./icons";
 
 export interface Env {
   ACCESS_CLIENT_ID: string;
@@ -16,6 +17,17 @@ export interface Env {
   CF_ACCESS_CLIENT_ID: string;
   CF_ACCESS_CLIENT_SECRET: string;
   ORIGIN_MCP_URL: string;
+}
+
+// Detect which service is running based on ORIGIN_MCP_URL
+function getIcons(env: Env): Icons {
+  if (env.ORIGIN_MCP_URL.includes("paperless")) {
+    return paperlessIcons;
+  } else if (env.ORIGIN_MCP_URL.includes("things")) {
+    return thingsIcons;
+  }
+  // Fallback to paperless if we can't detect
+  return paperlessIcons;
 }
 
 export default {
@@ -43,6 +55,33 @@ export default {
     switch (url.pathname) {
       case "/":
         return new Response("Not Found", { status: 404 });
+
+      case "/favicon.ico": {
+        const icons = getIcons(env);
+        const iconData = Uint8Array.from(atob(icons.favicon), (c) =>
+          c.charCodeAt(0)
+        );
+        return new Response(iconData, {
+          headers: {
+            "Content-Type": "image/x-icon",
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      }
+
+      case "/apple-touch-icon.png":
+      case "/apple-touch-icon-precomposed.png": {
+        const icons = getIcons(env);
+        const iconData = Uint8Array.from(atob(icons.appleTouchIcon), (c) =>
+          c.charCodeAt(0)
+        );
+        return new Response(iconData, {
+          headers: {
+            "Content-Type": "image/png",
+            "Cache-Control": "public, max-age=86400",
+          },
+        });
+      }
 
       case "/mcp":
         return handleMcpProxyRequest(request, env);
