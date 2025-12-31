@@ -1,7 +1,7 @@
 import type { Env } from "./index";
 import { validateAccessToken, type CloudflareTokens } from "./token-store";
 
-const PROXY_TIMEOUT = 60000; // 60 seconds
+const PROXY_TIMEOUT = 300000; // 5 minutes - needed for long-lived SSE connections
 
 async function refreshCloudflareToken(
   refreshToken: string,
@@ -138,6 +138,8 @@ export async function handleMcpProxyRequest(
       body: request.body,
       signal: controller.signal,
       redirect: "manual", // Don't follow redirects
+      // @ts-ignore - duplex is needed for streaming but not in types yet
+      duplex: "half", // Enable streaming for request/response bodies
     });
 
     clearTimeout(timeoutId);
@@ -150,6 +152,7 @@ export async function handleMcpProxyRequest(
     // });
 
     // Stream response back to client
+    // Preserve all headers from origin, especially for SSE (text/event-stream)
     const responseHeaders = new Headers(proxyResponse.headers);
 
     // Add proactive refresh hint
@@ -161,6 +164,7 @@ export async function handleMcpProxyRequest(
       );
     }
 
+    // Return streaming response - body will be streamed without buffering
     return new Response(proxyResponse.body, {
       status: proxyResponse.status,
       statusText: proxyResponse.statusText,
